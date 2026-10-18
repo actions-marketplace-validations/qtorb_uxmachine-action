@@ -25,16 +25,18 @@ previous measurement of the same site. It reports; it never fails your workflow.
 2. Store it as a repository secret named UXMACHINE_KEY.
 3. Add the workflow:
 
-    on: deployment_status
-    jobs:
-      uxmachine:
-        if: github.event.deployment_status.state == 'success'
-        runs-on: ubuntu-latest
-        steps:
-          - uses: qtorb/uxmachine-action@v1
-            with:
-              clave: ${{ secrets.UXMACHINE_KEY }}
-              url: https://www.example.com
+```yaml
+on: deployment_status
+jobs:
+  uxmachine:
+    if: github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: qtorb/uxmachine-action@v1
+        with:
+          clave: ${{ secrets.UXMACHINE_KEY }}
+          url: https://www.example.com
+```
 
 Set url to your published address. The deployment URLs that hosting platforms
 report change with every deployment, so they could not be compared with the
