@@ -3,7 +3,7 @@
 # Textos 1 a 10 de TEXTOS-DE-LA-ACTION.md, firmados por Albert (18-10-2026), literales. Este fichero se copia al
 # repositorio público de la Action, que crea Albert; no se publica desde aquí.
 name: "UXMachine deploy check"
-description: "Measures your published site after each deployment and compares it with the previous measurement. It reports; it never fails your workflow."
+description: "Measures your published site after each deployment and compares it with the previous one. It never fails your workflow."
 inputs:
   clave:
     description: "Your UXMachine Action key. Create it in your UXMachine panel and store it as a repository secret named UXMACHINE_KEY. The README shows how to pass it."
@@ -38,3 +38,6 @@ inputs:
 runs:
   using: "node24"
   main: "dist/index.js"
+branding:
+  icon: "eye"
+  color: "blue"
