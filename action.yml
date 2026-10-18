@@ -9,9 +9,8 @@ inputs:
     description: "Your UXMachine Action key. Create it in your UXMachine panel, store it as a repository secret named UXMACHINE_KEY and pass ${{ secrets.UXMACHINE_KEY }}."
     required: true
   url:
-    description: "Address to measure. If empty, it is taken from the deployment_status event (the environment URL of a successful deployment)."
-    required: false
-    default: ""
+    description: "Address of your published site, for example https://www.example.com. Required. The deployment event only decides when to measure; the address measured is always this one."
+    required: true
   entorno:
     description: "publicada (the site people visit) or vista_previa (a preview). Default: publicada."
     required: false

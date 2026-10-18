@@ -34,6 +34,15 @@ previous measurement of the same site. It reports; it never fails your workflow.
           - uses: qtorb/uxmachine-action@v1
             with:
               clave: ${{ secrets.UXMACHINE_KEY }}
+              url: https://www.example.com
+
+Set url to your published address. The deployment URLs that hosting platforms
+report change with every deployment, so they could not be compared with the
+previous measurement.
+
+This trigger works with platforms that report GitHub deployments, such as
+Vercel. Netlify does not report them: run the Action in your own workflow,
+after your deploy step.
 
 ## Cost and limits
 Each measurement uses 1 credit of your UXMachine account, like any other

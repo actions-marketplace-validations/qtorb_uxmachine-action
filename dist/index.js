@@ -31,8 +31,11 @@ const LLAMADA_MS = 30_000;
 const SIN_TERMINAR = ["en_cola", "en_curso", "pedida"];
 /** Los entornos de despliegue que cuentan como producción. */
 const PRODUCCION = ["Production", "production"];
+/** ACCION-AJUSTES · y «Production – <lo que sea>», con guion largo y espacios: así lo manda Vercel con varios proyectos. */
+const PRODUCCION_DE_UN_PROYECTO = /^Production – .+$/;
+const esProduccion = (entorno) => PRODUCCION.includes(entorno) || PRODUCCION_DE_UN_PROYECTO.test(entorno);
 
-/** 11–18 y 21 de `TEXTOS-DE-LA-ACTION.md`, firmados por Albert (18-10-2026), literales. */
+/** 11–18, 21 y 25 de `TEXTOS-DE-LA-ACTION.md`, firmados por Albert (18-10-2026), literales. */
 const TEXTOS = Object.freeze({
   es: Object.freeze({
     cabecera: (sha7) => `UXMachine · medido después del despliegue ${sha7}`,
@@ -42,8 +45,9 @@ const TEXTOS = Object.freeze({
     memoria: "Comparación con la medida anterior de esta web",
     que_se_midio: (sha7) => `Medimos lo que servía la dirección cuando le llegó el turno, después del despliegue ${sha7}. Si hay una caché delante o llegó otro despliegue mientras tanto, puede ser otra versión.`,
     no_es_produccion: (entorno) => `No se mide: este despliegue no es del entorno de producción (${entorno}).`,
-    sin_url: "No se mide: falta la dirección. Pon el input url o usa el evento deployment_status.",
+    sin_url: "No se mide: falta la dirección. Pon en el input url la dirección de tu web publicada.",
     sin_conexion: (codigo) => `No hemos podido hablar con UXMachine (${codigo}). Tu despliegue no se ve afectado; esta vez no hay medida.`,
+    clave_no_vale: "No podemos medir: la clave de la Action no es válida o se ha quitado. Crea una nueva en tu panel y guárdala en el secreto UXMACHINE_KEY.",
   }),
   en: Object.freeze({
     cabecera: (sha7) => `UXMachine · measured after deployment ${sha7}`,
@@ -53,10 +57,17 @@ const TEXTOS = Object.freeze({
     memoria: "Compared with the previous measurement of this site",
     que_se_midio: (sha7) => `We measured what the address served when its turn came, after deployment ${sha7}. If there is a cache in front of it or another deployment arrived meanwhile, it may be a different version.`,
     no_es_produccion: (entorno) => `Not measured: this deployment is not to the production environment (${entorno}).`,
-    sin_url: "Not measured: no address. Set the url input or run on the deployment_status event.",
+    sin_url: "Not measured: no address. Set the url input to the address of your published site.",
     sin_conexion: (codigo) => `We could not reach UXMachine (${codigo}). Your deployment is not affected; there is no measurement this time.`,
+    clave_no_vale: "We cannot measure: the Action key is not valid or has been removed. Create a new one in your panel and store it in the UXMACHINE_KEY secret.",
   }),
 });
+
+/**
+ * ACCION-AJUSTES · el aviso de una respuesta sin texto: un 401 es la clave, y se dice con el texto 25 (`clave_no_vale`,
+ * el de A.10); cualquier otro código, con el de no poder hablar con UXMachine (18).
+ */
+const avisoDelCodigo = (T, estado) => (estado === 401 ? T.clave_no_vale : T.sin_conexion(String(estado)));
 
 /** Un input, como lo pasa GitHub: `INPUT_<NOMBRE>` en mayúsculas. */
 const entrada = (env, nombre) => String(env[`INPUT_${nombre.replace(/ /g, "_").toUpperCase()}`] ?? "").trim();
@@ -84,16 +95,18 @@ async function ejecutar({ env = process.env, fetch: pedir = globalThis.fetch, do
     const minimoTexto = entrada(env, "minimo_entre_medidas_h");
     const minimo = minimoTexto === "" ? 6 : Number(minimoTexto);
 
-    /** La dirección: la del input; si no, la del despliegue (`deployment_status` con éxito). */
+    /**
+     * ACCION-AJUSTES · la dirección es siempre la del input `url`, obligatorio: el evento `deployment_status` sólo
+     * decide cuándo. Las direcciones que da el evento cambian con cada despliegue y no se podrían comparar.
+     */
     let evento = {};
     try { evento = env.GITHUB_EVENT_PATH ? JSON.parse(fs.readFileSync(env.GITHUB_EVENT_PATH, "utf8")) : {}; } catch { evento = {}; }
     const delDespliegue = env.GITHUB_EVENT_NAME === "deployment_status" ? evento.deployment_status ?? null : null;
     if (delDespliegue && entorno === "publicada") {
       const suEntorno = evento.deployment?.environment ?? delDespliegue.environment ?? "";
-      if (!PRODUCCION.includes(suEntorno)) { avisar(T.no_es_produccion(suEntorno)); return 0; }
+      if (!esProduccion(suEntorno)) { avisar(T.no_es_produccion(suEntorno)); return 0; }
     }
-    let url = entrada(env, "url");
-    if (!url && delDespliegue?.state === "success") url = delDespliegue.environment_url || delDespliegue.target_url || "";
+    const url = entrada(env, "url");
     if (!url) { avisar(T.sin_url); return 0; }
     const sha = evento.deployment?.sha || env.GITHUB_SHA || "";
     const repo = env.GITHUB_REPOSITORY || "";
@@ -125,7 +138,7 @@ async function ejecutar({ env = process.env, fetch: pedir = globalThis.fetch, do
       return 0;
     }
     if (p.estado !== 202 || !p.cuerpo?.id) {
-      avisar(p.cuerpo?.texto || T.sin_conexion(String(p.estado)));
+      avisar(p.cuerpo?.texto || avisoDelCodigo(T, p.estado));
       return 0;
     }
     const sha7 = sha.slice(0, 7);
@@ -140,7 +153,7 @@ async function ejecutar({ env = process.env, fetch: pedir = globalThis.fetch, do
       const e = await llamar(`/action/estado/${encodeURIComponent(p.cuerpo.id)}?idioma=${encodeURIComponent(idioma)}`);
       if (e.estado !== 200) {
         if (e.estado === 0) continue;
-        avisar(T.sin_conexion(String(e.estado)));
+        avisar(avisoDelCodigo(T, e.estado));
         return 0;
       }
       const estado = e.cuerpo?.datos?.estado;
