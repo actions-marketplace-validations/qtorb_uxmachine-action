@@ -1,0 +1,41 @@
+# DESPLIEGUE-1 · la GitHub Action de UXMachine: tras un despliegue, pide UNA medida de la web publicada y, si se le pide,
+# espera su resultado y lo deja en el resumen del trabajo. Nunca termina en rojo.
+# Textos 1 a 10 de TEXTOS-DE-LA-ACTION.md, firmados por Albert (18-10-2026), literales. Este fichero se copia al
+# repositorio público de la Action, que crea Albert; no se publica desde aquí.
+name: "UXMachine deploy check"
+description: "Measures your published site after each deployment and compares it with the previous measurement. It reports; it never fails your workflow."
+inputs:
+  clave:
+    description: "Your UXMachine Action key. Create it in your UXMachine panel, store it as a repository secret named UXMACHINE_KEY and pass ${{ secrets.UXMACHINE_KEY }}."
+    required: true
+  url:
+    description: "Address to measure. If empty, it is taken from the deployment_status event (the environment URL of a successful deployment)."
+    required: false
+    default: ""
+  entorno:
+    description: "publicada (the site people visit) or vista_previa (a preview). Default: publicada."
+    required: false
+    default: "publicada"
+  confirmar_publicada:
+    description: "Set to true if your real site lives on a preview domain (for example name.vercel.app) and you want it measured as published."
+    required: false
+    default: "false"
+  esperar:
+    description: "If true (default), waits up to 12 minutes to add the comparison to the job summary. If false, only the report link is added."
+    required: false
+    default: "true"
+  minimo_entre_medidas_h:
+    description: "Minimum hours between two measurements of the same site. Default: 6. Requests in between are not measured and use no credit."
+    required: false
+    default: "6"
+  idioma:
+    description: "Language of the job summary and the report: en or es. Default: en."
+    required: false
+    default: "en"
+  servidor:
+    description: "UXMachine server address. Leave the default."
+    required: false
+    default: "https://uxmachine.app"
+runs:
+  using: "node24"
+  main: "dist/index.js"
