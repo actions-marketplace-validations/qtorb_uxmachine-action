@@ -6,7 +6,7 @@ name: "UXMachine deploy check"
 description: "Measures your published site after each deployment and compares it with the previous measurement. It reports; it never fails your workflow."
 inputs:
   clave:
-    description: "Your UXMachine Action key. Create it in your UXMachine panel, store it as a repository secret named UXMACHINE_KEY and pass ${{ secrets.UXMACHINE_KEY }}."
+    description: "Your UXMachine Action key. Create it in your UXMachine panel and store it as a repository secret named UXMACHINE_KEY. The README shows how to pass it."
     required: true
   url:
     description: "Address of your published site, for example https://www.example.com. Required. The deployment event only decides when to measure; the address measured is always this one."
