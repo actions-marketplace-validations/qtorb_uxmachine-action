@@ -35,7 +35,7 @@ const PRODUCCION = ["Production", "production"];
 const PRODUCCION_DE_UN_PROYECTO = /^Production – .+$/;
 const esProduccion = (entorno) => PRODUCCION.includes(entorno) || PRODUCCION_DE_UN_PROYECTO.test(entorno);
 
-/** 11–18, 21 y 25 de `TEXTOS-DE-LA-ACTION.md`, firmados por Albert (18-10-2026), literales. */
+/** 11–18, 21, 25 y 29 de `TEXTOS-DE-LA-ACTION.md`, firmados por Albert (18-10-2026), literales. */
 const TEXTOS = Object.freeze({
   es: Object.freeze({
     cabecera: (sha7) => `UXMachine · medido después del despliegue ${sha7}`,
@@ -48,6 +48,7 @@ const TEXTOS = Object.freeze({
     sin_url: "No se mide: falta la dirección. Pon en el input url la dirección de tu web publicada.",
     sin_conexion: (codigo) => `No hemos podido hablar con UXMachine (${codigo}). Tu despliegue no se ve afectado; esta vez no hay medida.`,
     clave_no_vale: "No podemos medir: la clave de la Action no es válida o se ha quitado. Crea una nueva en tu panel y guárdala en el secreto UXMACHINE_KEY.",
+    primera_medida: "Es la primera medida de esta web con esta cuenta. La próxima se comparará con esta.",
   }),
   en: Object.freeze({
     cabecera: (sha7) => `UXMachine · measured after deployment ${sha7}`,
@@ -60,6 +61,7 @@ const TEXTOS = Object.freeze({
     sin_url: "Not measured: no address. Set the url input to the address of your published site.",
     sin_conexion: (codigo) => `We could not reach UXMachine (${codigo}). Your deployment is not affected; there is no measurement this time.`,
     clave_no_vale: "We cannot measure: the Action key is not valid or has been removed. Create a new one in your panel and store it in the UXMACHINE_KEY secret.",
+    primera_medida: "This is the first measurement of this site with this account. The next one will be compared with it.",
   }),
 });
 
@@ -68,6 +70,16 @@ const TEXTOS = Object.freeze({
  * el de A.10); cualquier otro código, con el de no poder hablar con UXMachine (18).
  */
 const avisoDelCodigo = (T, estado) => (estado === 401 ? T.clave_no_vale : T.sin_conexion(String(estado)));
+
+/**
+ * ACCION-COMPARACION · el texto de memoria de una respuesta de `estado` terminada: el bloque de `contenido` que va
+ * justo detrás de la frase («ha terminado») y antes del JSON, el que escribe `CANAL_MEMORIA`. Sólo existe cuando la
+ * memoria tiene algo que decir; la invitación al Seguimiento, si sale, va siempre detrás de él. `null` si no lo hay.
+ */
+const textoDeMemoria = (cuerpo) => {
+  const c = Array.isArray(cuerpo?.contenido) ? cuerpo.contenido : [];
+  return c.length >= 3 && typeof c[1] === "string" && c[1] && !c[1].startsWith("```") ? c[1] : null;
+};
 
 /** Un input, como lo pasa GitHub: `INPUT_<NOMBRE>` en mayúsculas. */
 const entrada = (env, nombre) => String(env[`INPUT_${nombre.replace(/ /g, "_").toUpperCase()}`] ?? "").trim();
@@ -158,8 +170,14 @@ async function ejecutar({ env = process.env, fetch: pedir = globalThis.fetch, do
       }
       const estado = e.cuerpo?.datos?.estado;
       if (SIN_TERMINAR.includes(estado)) continue;
-      /** Terminada (o no se pudo terminar): bajo su rótulo (15), sólo los textos que trae la respuesta. */
-      resumen(`\n### ${T.memoria}\n\n${e.cuerpo?.texto ?? ""}\n`);
+      /**
+       * Terminada (o no se pudo terminar): primero la frase de la respuesta (con su enlace), y después, bajo el rótulo
+       * 15, el texto de memoria tal cual; sin él, con la memoria «sin_anterior», el 29; en otro caso, sin rótulo.
+       */
+      if (e.cuerpo?.texto) resumen(`\n${e.cuerpo.texto}\n`);
+      const memoria = textoDeMemoria(e.cuerpo)
+        ?? (e.cuerpo?.datos?.memoria?.estado === "sin_anterior" ? T.primera_medida : null);
+      if (memoria) resumen(`\n### ${T.memoria}\n\n${memoria}\n`);
       return 0;
     }
     resumen(`\n${T.sigue_en_curso}\n`);
@@ -170,7 +188,7 @@ async function ejecutar({ env = process.env, fetch: pedir = globalThis.fetch, do
   }
 }
 
-module.exports = { ejecutar, CADA_MS, TOPE_MS };
+module.exports = { ejecutar, CADA_MS, TOPE_MS, TEXTOS };
 
 if (require.main === module) {
   ejecutar().then(() => { process.exitCode = 0; }, () => { process.exitCode = 0; });
